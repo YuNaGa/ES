@@ -1,0 +1,102 @@
+version: "2.3"
+services:
+ es01:
+  container_name: es01
+  build:
+   context: ./elasticsearch_01
+   dockerfile: Dockerfile
+  env_file:
+    - ./elasticsearch_01/.env
+  environment: 
+   - cluster.name=es-cluster
+   - node.name=es01
+   - discovery.seed_hosts=10.100.24.10,10.100.24.11
+   - cluster.initial_master_nodes=10.100.24.10,10.100.24.11
+   - bootstrap.memory_lock=true
+   - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  volumes:
+   - es01_volume:/usr/share/elasticsearch/data
+  mem_limit: 1g
+  ulimits:
+   memlock:
+    soft: -1
+    hard: -1
+  links:
+   - kibana
+  networks:
+   es_service_net:
+    ipv4_address: 10.100.24.10
+  ports:
+   - 9200:9200 
+   - 9300:9300 
+   - 9600:9600 
+
+
+
+# es02:
+#  container_name: es02
+#  build:
+#   context: ./elasticsearch_02
+#   dockerfile: Dockerfile
+#  environment: 
+#   - cluster.name=es-cluster
+#   - node.name=es02
+#   - discovery.seed_hosts=10.100.24.10,10.100.24.11
+#   - cluster.initial_master_nodes=10.100.24.10,10.100.24.11
+#   - bootstrap.memory_lock=true
+#   - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+#   - opendistro_security.compliance.salt="awdrgyhjgtfesdg"
+#  volumes:
+#   - es02_volume:/usr/share/elasticsearch/data
+#  mem_limit: 1g
+#  ulimits:
+#   memlock:
+#    soft: -1
+#    hard: -1
+#  networks:
+#   es_service_net:
+#    ipv4_address: 10.100.24.11
+
+
+ kibana:
+  #build: ./kibana
+  image: amazon/opendistro-for-elasticsearch-kibana
+  container_name: kibana
+  ports:
+   - 5601:5601
+  environment:
+   ELASTICSEARCH_URL: https://10.100.24.10:9200
+   ELASTICSEARCH_HOSTS: https://10.100.24.10:9200
+  networks:
+   es_service_net:
+    ipv4_address: 10.100.24.100
+  volumes:
+   - ./tmp/kibana:/tmp
+#  depends_on: 
+#   - es01
+
+
+ centos01:
+  build: ./centos_target
+  networks:
+   es_service_net:
+    ipv4_address: 10.100.24.250
+  volumes:
+    - ./tmp/centos01/tmp
+
+
+
+networks:
+ es_service_net:
+  driver: bridge
+  ipam:
+   driver: default
+   config:
+    - subnet: 10.100.24.0/24
+      gateway: 10.100.24.1
+
+volumes: 
+ es01_volume:
+  driver: local
+ es02_volume:
+  driver: local
